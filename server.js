@@ -93,7 +93,7 @@ async function fetchData() {
           console.log(`✅ Successfully inserted/updated: ${player.username}`);
         } catch (dbError) {
           console.error(`❌ Error inserting player: ${player.username}`);
-          console.error("DB Error:", dbError.message);
+          console.error("❌ Supabase DB Error:", dbError);
         }
       }
     }
