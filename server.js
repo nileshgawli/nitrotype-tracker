@@ -30,88 +30,79 @@ async function testSupabaseConnection() {
 async function fetchData() {
   try {
     for (const team of TEAMS) {
-      console.log(`🔍 Fetching data for team: ${team}`);
+      console.log(`🚀 Fetching data for team: ${team}`);
 
-      const response = await axios.get(
-        `https://www.nitrotype.com/api/v2/teams/${team}`,
-        {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
-            "Referer": "https://www.nitrotype.com",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-          },
-        }
-      );
-
-      console.log(`✅ API Response for ${team}:`, JSON.stringify(response.data, null, 2));
-
-      if (!response.data.results) {
-        console.error(`❌ No 'results' in API response for team ${team}`);
-        continue;
-      }
+      const response = await axios.get(`https://www.nitrotype.com/api/v2/teams/${team}`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
+          "Referer": "https://www.nitrotype.com",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Connection": "keep-alive",
+        },
+      });
 
       const teamInfo = response.data.results.info;
       const members = response.data.results.members;
 
       for (let player of members) {
-        console.log(`👤 Processing player: ${player.username}`);
+        try {
+          console.log(`👤 Processing player: ${player.username}`);
 
-        await pool.query(
-          `INSERT INTO player_stats
-          (teamID, teamName, userID, racesPlayed, avgSpeed, lastLogin, played, secs, typed, errs, joinStamp, lastActivity, role, username, displayName, membership, title, carID, carHueAngle, status, highestSpeed)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-          ON CONFLICT (userID, teamID)
-          DO UPDATE SET
-          racesPlayed = EXCLUDED.racesPlayed,
-          avgSpeed = EXCLUDED.avgSpeed,
-          lastLogin = EXCLUDED.lastLogin,
-          played = EXCLUDED.played,
-          secs = EXCLUDED.secs,
-          typed = EXCLUDED.typed,
-          errs = EXCLUDED.errs,
-          lastActivity = EXCLUDED.lastActivity,
-          status = EXCLUDED.status,
-          highestSpeed = EXCLUDED.highestSpeed;`,
-          [
-            teamInfo.teamID,
-            teamInfo.name,
-            player.userID,
-            player.racesPlayed,
-            player.avgSpeed,
-            player.lastLogin,
-            player.played,
-            player.secs,
-            player.typed,
-            player.errs,
-            player.joinStamp,
-            player.lastActivity,
-            player.role,
-            player.username,
-            player.displayName,
-            player.membership,
-            player.title,
-            player.carID,
-            player.carHueAngle,
-            player.status,
-            player.highestSpeed,
-          ]
-        );
+          await pool.query(
+            `INSERT INTO player_stats
+            (teamID, teamName, userID, racesPlayed, avgSpeed, lastLogin, played, secs, typed, errs, joinStamp, lastActivity, role, username, displayName, membership, title, carID, carHueAngle, status, highestSpeed)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            ON CONFLICT (userID, teamID)
+            DO UPDATE SET
+            racesPlayed = EXCLUDED.racesPlayed,
+            avgSpeed = EXCLUDED.avgSpeed,
+            lastLogin = EXCLUDED.lastLogin,
+            played = EXCLUDED.played,
+            secs = EXCLUDED.secs,
+            typed = EXCLUDED.typed,
+            errs = EXCLUDED.errs,
+            lastActivity = EXCLUDED.lastActivity,
+            status = EXCLUDED.status,
+            highestSpeed = EXCLUDED.highestSpeed;`,
+            [
+              teamInfo.teamID,
+              teamInfo.name,
+              player.userID,
+              player.racesPlayed,
+              player.avgSpeed,
+              player.lastLogin,
+              player.played,
+              player.secs,
+              player.typed,
+              player.errs,
+              player.joinStamp,
+              player.lastActivity,
+              player.role,
+              player.username,
+              player.displayName,
+              player.membership,
+              player.title,
+              player.carID,
+              player.carHueAngle,
+              player.status,
+              player.highestSpeed,
+            ]
+          );
+
+          console.log(`✅ Successfully inserted/updated: ${player.username}`);
+        } catch (dbError) {
+          console.error(`❌ Error inserting player: ${player.username}`);
+          console.error("DB Error:", dbError.message);
+        }
       }
     }
     console.log("✅ Data for all teams saved successfully!");
   } catch (error) {
-    console.error("❌ Error fetching or saving data:");
-    if (error.response) {
-      console.error(`Status Code: ${error.response.status}`);
-      console.error(`Response Data:`, error.response.data);
-    } else {
-      console.error(error.message);
-    }
+    console.error("❌ Error fetching or saving data:", error.message);
   }
 }
+
 
 // Schedule polling every 10 minutes
 cron.schedule("*/10 * * * *", fetchData);
