@@ -14,12 +14,24 @@ const pool = new Pool({
 });
 
 // Fetch team list from environment variable
-const TEAMS = process.env.TEAMS.split(",");
+const TEAMS = process.env.TEAMS ? process.env.TEAMS.split(",") : [];
+
+async function testSupabaseConnection() {
+  try {
+    const client = await pool.connect();
+    console.log("✅ Connected to Supabase successfully!");
+    client.release();
+  } catch (error) {
+    console.error("❌ Error connecting to Supabase:", error.message);
+  }
+}
 
 // Fetch and store data for all teams
 async function fetchData() {
   try {
     for (const team of TEAMS) {
+      console.log(`🔍 Fetching data for team: ${team}`);
+
       const response = await axios.get(
         `https://www.nitrotype.com/api/v2/teams/${team}`,
         {
@@ -29,10 +41,20 @@ async function fetchData() {
           },
         }
       );
+
+      console.log(`✅ API Response for ${team}:`, JSON.stringify(response.data, null, 2));
+
+      if (!response.data.results) {
+        console.error(`❌ No 'results' in API response for team ${team}`);
+        continue;
+      }
+
       const teamInfo = response.data.results.info;
       const members = response.data.results.members;
 
       for (let player of members) {
+        console.log(`👤 Processing player: ${player.username}`);
+
         await pool.query(
           `INSERT INTO player_stats
           (teamID, teamName, userID, racesPlayed, avgSpeed, lastLogin, played, secs, typed, errs, joinStamp, lastActivity, role, username, displayName, membership, title, carID, carHueAngle, status, highestSpeed)
@@ -77,12 +99,21 @@ async function fetchData() {
     }
     console.log("✅ Data for all teams saved successfully!");
   } catch (error) {
-    console.error("❌ Error fetching or saving data:", error.message);
+    console.error("❌ Error fetching or saving data:");
+    if (error.response) {
+      console.error(`Status Code: ${error.response.status}`);
+      console.error(`Response Data:`, error.response.data);
+    } else {
+      console.error(error.message);
+    }
   }
 }
 
 // Schedule polling every 10 minutes
 cron.schedule("*/10 * * * *", fetchData);
+
+// Run initial tests
+testSupabaseConnection();
 fetchData();
 
 // Start Express Server
