@@ -20,7 +20,17 @@ const TEAMS = process.env.TEAMS.split(",");
 async function fetchData() {
   try {
     for (const team of TEAMS) {
-      const response = await axios.get(`https://www.nitrotype.com/api/v2/teams/${team}`);
+      const response = await axios.get(
+        `https://www.nitrotype.com/api/v2/teams/${team}`,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+            Accept: "application/json",
+            Referer: "https://www.nitrotype.com",
+          },
+        }
+      );
       const teamInfo = response.data.results.info;
       const members = response.data.results.members;
 
