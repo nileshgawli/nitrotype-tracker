@@ -3,6 +3,9 @@ const express = require("express");
 const axios = require("axios");
 const { Pool } = require("pg");
 const cron = require("node-cron");
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
