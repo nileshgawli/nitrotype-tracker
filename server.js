@@ -110,7 +110,7 @@ async function fetchData() {
 }
 
 // Schedule polling every 10 minutes
-cron.schedule("*/10 * * * *", fetchData);
+cron.schedule("*/5 * * * *", fetchData);
 
 // Run initial tests
 testSupabaseConnection();
