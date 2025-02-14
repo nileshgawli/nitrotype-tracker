@@ -54,25 +54,16 @@ async function fetchData() {
       const teamInfo = response.data.results.info;
       const members = response.data.results.members;
 
+      console.log(teamInfo);
+      console.log(members)
+
       for (let player of members) {
         console.log(`👤 Processing player: ${player.username}`);
 
         await pool.query(
           `INSERT INTO player_stats
           (teamID, teamName, userID, racesPlayed, avgSpeed, lastLogin, played, secs, typed, errs, joinStamp, lastActivity, role, username, displayName, membership, title, carID, carHueAngle, status, highestSpeed)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-          ON CONFLICT (userID, teamID)
-          DO UPDATE SET
-          racesPlayed = EXCLUDED.racesPlayed,
-          avgSpeed = EXCLUDED.avgSpeed,
-          lastLogin = EXCLUDED.lastLogin,
-          played = EXCLUDED.played,
-          secs = EXCLUDED.secs,
-          typed = EXCLUDED.typed,
-          errs = EXCLUDED.errs,
-          lastActivity = EXCLUDED.lastActivity,
-          status = EXCLUDED.status,
-          highestSpeed = EXCLUDED.highestSpeed;`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20);`,
           [
             teamInfo.teamID,
             teamInfo.name,
@@ -112,11 +103,11 @@ async function fetchData() {
 }
 
 // Schedule polling every 10 minutes
-cron.schedule("*/10 * * * *", fetchData);
+cron.schedule("*/1 * * * *", fetchData);
 
 // Run initial tests
 testSupabaseConnection();
-fetchData();
+// fetchData();
 
 // Start Express Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
