@@ -63,7 +63,7 @@ async function fetchData() {
         await pool.query(
           `INSERT INTO player_stats
           (teamID, teamName, userID, racesPlayed, avgSpeed, lastLogin, played, secs, typed, errs, joinStamp, lastActivity, role, username, displayName, membership, title, carID, carHueAngle, status, highestSpeed)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20);`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21);`,
           [
             teamInfo.teamID,
             teamInfo.name,
@@ -85,9 +85,10 @@ async function fetchData() {
             player.carID,
             player.carHueAngle,
             player.status,
-            player.highestSpeed,
+            player.highestSpeed // 🔥 Make sure this is the last value (20th)
           ]
         );
+
       }
     }
     console.log("✅ Data for all teams saved successfully!");
