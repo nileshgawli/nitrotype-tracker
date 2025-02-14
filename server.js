@@ -115,5 +115,8 @@ cron.schedule("*/5 * * * *", fetchData);
 // Run initial tests
 testSupabaseConnection();
 
+// Keep-alive endpoint for uptime monitoring
+app.get("/", (req, res) => res.send("✅ Server is alive!"));
+
 // Start Express Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
