@@ -11,21 +11,18 @@ const PORT = process.env.PORT || 3000;
 // Function to get IST formatted time
 function getISTTime() {
   const options = {
-    timeZone: 'Asia/Kolkata',
+    timeZone: "Asia/Kolkata",
     hour12: false,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-    millisecond: 'numeric'
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
   };
 
   const now = new Date();
-  const istTime = new Intl.DateTimeFormat('en-GB', options).format(now);
-
-  return istTime;
+  return new Intl.DateTimeFormat("en-GB", options).format(now);
 }
 
 // Connect to Supabase PostgreSQL
@@ -51,20 +48,25 @@ async function testSupabaseConnection() {
 async function fetchTeamData(team, retries = 3, delay = 5000) {
   try {
     console.log(`${getISTTime()} 🔍 Fetching data for team: ${team}`);
-    const response = await axios.get(`https://www.nitrotype.com/api/v2/teams/${team}`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
-        "Referer": "https://www.nitrotype.com",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-      },
-    });
+    const response = await axios.get(
+      `https://www.nitrotype.com/api/v2/teams/${team}`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Referer: "https://www.nitrotype.com",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Accept-Encoding": "gzip, deflate, br",
+          Connection: "keep-alive",
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     if (retries > 0) {
-      console.warn(`⚠️ Request failed for ${team}, retrying in ${delay / 1000} seconds...`);
-      await new Promise(res => setTimeout(res, delay));
+      console.warn(
+        `⚠️ Request failed for ${team}, retrying in ${delay / 1000} seconds...`
+      );
+      await new Promise((res) => setTimeout(res, delay));
       return fetchTeamData(team, retries - 1, delay);
     } else {
       console.error(`❌ Failed to fetch data for ${team} after multiple attempts.`);
@@ -84,39 +86,88 @@ async function fetchData() {
 
     if (members.length === 0) continue;
 
-    const values = members.map(player => [
-      teamInfo.teamID, teamInfo.name, player.userID, player.racesPlayed,
-      player.avgSpeed, player.lastLogin, player.played, player.secs,
-      player.typed, player.errs, player.joinStamp, player.lastActivity,
-      player.role, player.username, player.displayName, player.membership,
-      player.title, player.carID, player.carHueAngle, player.status, player.highestSpeed
+    const values = members.map((player) => [
+      teamInfo.teamID,
+      teamInfo.name,
+      player.userID,
+      player.racesPlayed,
+      player.avgSpeed,
+      player.lastLogin,
+      player.played,
+      player.secs,
+      player.typed,
+      player.errs,
+      player.joinStamp,
+      player.lastActivity,
+      player.role,
+      player.username,
+      player.displayName,
+      player.membership,
+      player.title,
+      player.carID,
+      player.carHueAngle,
+      player.status,
+      player.highestSpeed,
+      new Date(), // Current timestamp
     ]);
 
-    const query = format(`
+    const query = format(
+      `
       INSERT INTO player_stats (
         teamID, teamName, userID, racesPlayed, avgSpeed, lastLogin, played, secs, typed, errs,
         joinStamp, lastActivity, role, username, displayName, membership, title, carID, carHueAngle,
         status, highestSpeed
       )
       VALUES %L
-    `, values);
+    `,
+      values
+    );
 
     await pool.query(query);
     console.log(`${getISTTime()} ✅ Successfully inserted ${members.length} players for team: ${team}`);
-
-    // await new Promise(res => setTimeout(res, 10000)); // Add 10-second delay between requests
   }
   console.log("✅ Data for all teams saved successfully!");
 }
 
-// Schedule polling every 10 minutes
-cron.schedule("*/5 * * * *", fetchData);
+// Schedule polling every 5 minutes
+cron.schedule("*/10 * * * *", fetchData);
 
-// Run initial tests
-testSupabaseConnection();
+// API Endpoint: Processed Player Stats
+app.get("/processed-players", async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT userID, username, teamName, MIN(racesPlayed) AS start_races,
+             MAX(racesPlayed) AS latest_races,
+             MIN(typed) AS start_typed, MAX(typed) AS latest_typed,
+             MIN(errs) AS start_errs, MAX(errs) AS latest_errs,
+             MIN(secs) AS start_secs, MAX(secs) AS latest_secs
+      FROM player_stats
+      GROUP BY userID, username, teamName
+    `);
+
+    const processedPlayers = rows.map((player) => ({
+      userID: player.userid,
+      username: player.username,
+      team: player.teamname,
+      racesPlayed: player.latest_races - player.start_races,
+      avgWPM: (player.latest_typed - player.start_typed) /
+              (player.latest_secs - player.start_secs) * 12,
+      accuracy: 100 - ((player.latest_errs - player.start_errs) /
+                      (player.latest_typed - player.start_typed)) * 100,
+    }));
+
+    res.json(processedPlayers);
+  } catch (error) {
+    console.error("❌ Error processing player stats:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Keep-alive endpoint for uptime monitoring
 app.get("/", (req, res) => res.send("✅ Server is alive!"));
 
 // Start Express Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+// Run initial tests
+testSupabaseConnection();
